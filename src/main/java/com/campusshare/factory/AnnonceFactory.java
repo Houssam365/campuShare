@@ -37,6 +37,11 @@ public class AnnonceFactory {
     public static Annonce creerAnnonce(TypeAnnonce type, String titre, String description,
                                        Utilisateur proprietaire, Categorie categorie) {
         
+        // T2-02: Validation de base (le titre ne peut pas être vide)
+        if (titre == null || titre.trim().isEmpty()) {
+            throw new IllegalArgumentException("Le titre de l'annonce ne peut pas être vide.");
+        }
+
         String id = genererIdUnique(type);
         
         switch (type) {
