@@ -461,11 +461,12 @@ public class CampusShareApp {
      */
     private void initialiserUtilisateurs() {
         utilisateurs = Arrays.asList(
-                new Utilisateur("U001", "Martin", "Alice", "alice.martin@etu.univ.fr", "pass123"),
-                new Utilisateur("U002", "Dupont", "Bob", "bob.dupont@etu.univ.fr", "pass123"),
-                new Utilisateur("U003", "Durand", "Charlie", "charlie.durand@etu.univ.fr", "pass123"),
-                new Utilisateur("U004", "Leroy", "Diana", "diana.leroy@etu.univ.fr", "pass123"),
-                new Utilisateur("U005", "Bernard", "Emma", "emma.bernard@etu.univ.fr", "pass123")
+            // id, nom, prenom, email, pass, numEtu, campus
+            new Etudiant("U001", "Martin", "Alice", "alice.martin@etu.univ.fr", "pass123", "2025001", "Campus Nord"),
+            new Etudiant("U002", "Dupont", "Bob", "bob.dupont@etu.univ.fr", "pass123", "2025002", "Campus Nord"),
+            new Etudiant("U003", "Durand", "Charlie", "charlie.durand@etu.univ.fr", "pass123", "2025003", "Campus Sud"),
+            new Etudiant("U004", "Leroy", "Diana", "diana.leroy@etu.univ.fr", "pass123", "2025004", "Campus Sud"),
+            new Etudiant("U005", "Bernard", "Emma", "emma.bernard@etu.univ.fr", "pass123", "2025005", "Campus Est")
         );
     }
     
