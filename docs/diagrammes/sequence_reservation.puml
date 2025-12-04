@@ -1,0 +1,125 @@
+@startuml sequence_reservation
+!theme plain
+
+title Diagramme de Séquence - Processus de Réservation\nCampusShare - INFO 732
+
+actor "Demandeur\n(Emma)" as demandeur
+participant "ReservationService" as resService
+participant "Annonce\n(vélo)" as annonce
+participant "AnnonceFactory" as factory
+participant "TarifJournalier\n<<Strategy>>" as strategy
+participant "GoogleCalendarAdapter\n<<Adapter>>" as adapter
+participant "GoogleCalendarAPI\n<<External>>" as googleAPI
+participant "EmailObserver\n<<Observer>>" as emailObs
+actor "Propriétaire\n(Alice)" as proprio
+
+== Phase 1: Création de la réservation ==
+
+demandeur -> resService : reserverAvecTarifJournalier(annonce, emma, debut, fin)
+activate resService
+
+resService -> annonce : estDisponible()
+annonce --> resService : true
+
+resService -> strategy : calculerPrix(5€, 3 jours)
+activate strategy
+note right of strategy
+  **Pattern Strategy**
+  TarifJournalier calcule:
+  5€ × 3 = 15€
+end note
+strategy --> resService : 15.00€
+deactivate strategy
+
+resService -> resService : new Reservation(id, annonce, emma, debut, fin, strategy)
+
+resService -> annonce : notifyObservers("Nouvelle demande de Emma")
+activate annonce
+annonce -> emailObs : update(annonce, "Nouvelle demande...")
+activate emailObs
+note right of emailObs
+  **Pattern Observer**
+  Notification automatique
+  au propriétaire
+end note
+emailObs -> proprio : [Email] Nouvelle demande de réservation
+deactivate emailObs
+deactivate annonce
+
+resService --> demandeur : reservation (statut: EN_ATTENTE)
+deactivate resService
+
+== Phase 2: Confirmation par le propriétaire ==
+
+proprio -> resService : confirmerReservation(reservation)
+activate resService
+
+resService -> resService : reservation.confirmer()
+note right of resService: statut → CONFIRMEE
+
+resService -> annonce : changerStatut(RESERVEE)
+activate annonce
+annonce -> annonce : statut = RESERVEE
+annonce -> emailObs : update(annonce, "Réservation confirmée")
+emailObs -> demandeur : [Email] Votre réservation est confirmée!
+deactivate annonce
+
+resService -> adapter : ajouterEvenement(reservation)
+activate adapter
+note right of adapter
+  **Pattern Adapter**
+  Traduit notre Reservation
+  vers l'API Google
+end note
+
+adapter -> adapter : Conversion Reservation → paramètres Google
+adapter -> googleAPI : createEvent(titre, debut, fin, desc, loc)
+activate googleAPI
+googleAPI --> adapter : "gcal_123456"
+deactivate googleAPI
+adapter -> adapter : mappingIds.put(reservationId, "gcal_123456")
+adapter --> resService : true
+deactivate adapter
+
+resService --> proprio : OK
+deactivate resService
+
+== Phase 3: Déroulement et fin ==
+
+... 3 jours plus tard ...
+
+proprio -> resService : terminerReservation(reservation)
+activate resService
+
+resService -> resService : reservation.terminer()
+note right of resService: statut → TERMINEE
+
+resService -> annonce : changerStatut(ACTIVE)
+annonce -> annonce : statut = ACTIVE
+
+resService -> adapter : supprimerEvenement(reservationId)
+activate adapter
+adapter -> googleAPI : deleteEvent("gcal_123456")
+googleAPI --> adapter : true
+deactivate adapter
+
+resService --> proprio : OK
+deactivate resService
+
+== Phase 4: Évaluations mutuelles ==
+
+demandeur -> "EvaluationService" as evalService : evaluerProprietaire(reservation, 5, "Super!")
+activate evalService
+evalService -> proprio : ajouterEvaluation(eval)
+note right of evalService: Mise à jour réputation Alice
+evalService --> demandeur : evaluation
+deactivate evalService
+
+proprio -> evalService : evaluerDemandeur(reservation, 5, "Parfait!")
+activate evalService
+evalService -> demandeur : ajouterEvaluation(eval)
+note right of evalService: Mise à jour réputation Emma
+evalService --> proprio : evaluation
+deactivate evalService
+
+@enduml

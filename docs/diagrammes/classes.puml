@@ -1,0 +1,358 @@
+@startuml diagramme_classes_campusshare
+!theme plain
+skinparam classAttributeIconSize 0
+skinparam classFontStyle bold
+
+title Diagramme de Classes - CampusShare\nProjet INFO 732
+
+' ============= MODÈLE =============
+
+package "model" {
+    
+    class Utilisateur {
+        - id: String
+        - nom: String
+        - prenom: String
+        - email: String
+        - motDePasse: String
+        - reputation: double
+        - nombreEvaluations: int
+        - categoriesSuivies: List<String>
+        --
+        + ajouterEvaluation(e: Evaluation)
+        + estEmailUniversitaireValide(): boolean
+        + suivreCategorie(cat: String)
+        + getNomComplet(): String
+    }
+    
+    class Categorie {
+        - id: String
+        - nom: String
+        - description: String
+        - icone: String
+    }
+    
+    class Evaluation {
+        - id: String
+        - note: int
+        - commentaire: String
+        - dateEvaluation: LocalDateTime
+        - reservationId: String
+        --
+        + getNoteEnEtoiles(): String
+    }
+    
+    enum StatutAnnonce {
+        ACTIVE
+        RESERVEE
+        INDISPONIBLE
+        TERMINEE
+        SUPPRIMEE
+    }
+    
+    enum StatutReservation {
+        EN_ATTENTE
+        CONFIRMEE
+        EN_COURS
+        TERMINEE
+        ANNULEE
+        REFUSEE
+    }
+    
+    class Reservation {
+        - id: String
+        - dateDebut: LocalDateTime
+        - dateFin: LocalDateTime
+        - dateCreation: LocalDateTime
+        - statut: StatutReservation
+        - prixTotal: double
+        - messageAccompagnement: String
+        --
+        + calculerPrix(): double
+        + confirmer()
+        + demarrer()
+        + terminer()
+        + annuler()
+        + getDureeEnHeures(): long
+    }
+}
+
+package "model.annonce" {
+    
+    enum TypeAnnonce {
+        BIEN
+        SERVICE
+        DON
+    }
+    
+    abstract class Annonce << Observable >> {
+        # id: String
+        # titre: String
+        # description: String
+        # prixBase: double
+        # statut: StatutAnnonce
+        # dateCreation: LocalDateTime
+        # localisation: String
+        # nombreVues: int
+        - observers: List<Observer>
+        --
+        + {abstract} getType(): TypeAnnonce
+        + {abstract} getDetailsSpecifiques(): String
+        + attach(o: Observer)
+        + detach(o: Observer)
+        + notifyObservers(msg: String)
+        + changerStatut(s: StatutAnnonce)
+        + estDisponible(): boolean
+    }
+    
+    class BienAnnonce {
+        - etat: String
+        - marque: String
+        - modele: String
+        - cautionRequise: boolean
+        - montantCaution: double
+        - dureeMaxPretJours: int
+        --
+        + getType(): TypeAnnonce
+        + getDetailsSpecifiques(): String
+    }
+    
+    class ServiceAnnonce {
+        - typeService: String
+        - dureeMinutesEstimee: int
+        - joursDisponibles: List<DayOfWeek>
+        - horaireDisponible: String
+        - deplacementPossible: boolean
+        - niveauExpertise: String
+        - competences: List<String>
+        --
+        + getType(): TypeAnnonce
+        + getDetailsSpecifiques(): String
+        + ajouterJourDisponible(j: DayOfWeek)
+        + ajouterCompetence(c: String)
+    }
+    
+    class DonAnnonce {
+        - etatObjet: String
+        - raisonDon: String
+        - retraitSurPlace: boolean
+        - conditionsRecuperation: String
+        - quantiteDisponible: int
+        --
+        + getType(): TypeAnnonce
+        + getDetailsSpecifiques(): String
+        + reserverUnite(): boolean
+    }
+}
+
+' ============= PATTERN OBSERVER =============
+
+package "observer" <<Rectangle>> #LightBlue {
+    
+    interface Observable {
+        + attach(o: Observer)
+        + detach(o: Observer)
+        + notifyObservers(msg: String)
+    }
+    
+    interface Observer {
+        + update(a: Annonce, msg: String)
+    }
+    
+    class EmailObserver implements Observer {
+        - utilisateur: Utilisateur
+        --
+        + update(a: Annonce, msg: String)
+    }
+    
+    class PushObserver implements Observer {
+        - utilisateur: Utilisateur
+        - deviceToken: String
+        --
+        + update(a: Annonce, msg: String)
+    }
+    
+    class SMSObserver implements Observer {
+        - utilisateur: Utilisateur
+        - numeroTelephone: String
+        --
+        + update(a: Annonce, msg: String)
+    }
+}
+
+' ============= PATTERN STRATEGY =============
+
+package "strategy" <<Rectangle>> #LightGreen {
+    
+    interface StrategyTarification {
+        + calculerPrix(prixBase: double, duree: Duration): double
+        + getNom(): String
+        + getDescription(): String
+    }
+    
+    class TarifGratuit implements StrategyTarification {
+        + calculerPrix(): double
+    }
+    
+    class TarifHoraire implements StrategyTarification {
+        - tauxHoraire: double
+        --
+        + calculerPrix(): double
+    }
+    
+    class TarifJournalier implements StrategyTarification {
+        - reductionSemaine: double
+        --
+        + calculerPrix(): double
+    }
+    
+    class TarifForfaitaire implements StrategyTarification {
+        + calculerPrix(): double
+    }
+}
+
+' ============= PATTERN FACTORY =============
+
+package "factory" <<Rectangle>> #LightYellow {
+    
+    class AnnonceFactory << (S,#FF7700) Singleton >> {
+        + {static} creerAnnonce(type, titre, desc, proprio, cat): Annonce
+        + {static} creerAnnonceBien(...): BienAnnonce
+        + {static} creerAnnonceService(...): ServiceAnnonce
+        + {static} creerAnnonceDon(...): DonAnnonce
+        - {static} genererIdUnique(type): String
+    }
+}
+
+' ============= PATTERN ADAPTER =============
+
+package "adapter" <<Rectangle>> #LightPink {
+    
+    interface Calendrier {
+        + ajouterEvenement(r: Reservation): boolean
+        + supprimerEvenement(id: String): boolean
+        + modifierEvenement(r: Reservation): boolean
+        + verifierDisponibilite(r: Reservation): boolean
+    }
+    
+    class GoogleCalendarAPI << External >> {
+        - apiKey: String
+        - calendarId: String
+        --
+        + createEvent(title, start, end, desc, loc): String
+        + deleteEvent(eventId): boolean
+        + updateEvent(eventId, title, start, end): boolean
+        + checkAvailability(start, end): boolean
+    }
+    
+    class GoogleCalendarAdapter implements Calendrier {
+        - googleCalendarAPI: GoogleCalendarAPI
+        - mappingIds: Map<String, String>
+        --
+        + ajouterEvenement(r: Reservation): boolean
+        + supprimerEvenement(id: String): boolean
+        + modifierEvenement(r: Reservation): boolean
+        + verifierDisponibilite(r: Reservation): boolean
+    }
+}
+
+' ============= SERVICES =============
+
+package "service" {
+    
+    class AnnonceService {
+        - annonces: List<Annonce>
+        - observersGlobaux: List<Observer>
+        --
+        + publierAnnonce(type, titre, ...): Annonce
+        + publierBien(...): BienAnnonce
+        + publierService(...): ServiceAnnonce
+        + publierDon(...): DonAnnonce
+        + rechercherParMotCle(motCle): List<Annonce>
+        + filtrerParCategorie(cat): List<Annonce>
+        + filtrerParType(type): List<Annonce>
+        + ajouterObservateurGlobal(o: Observer)
+    }
+    
+    class ReservationService {
+        - reservations: List<Reservation>
+        - calendrier: Calendrier
+        --
+        + creerReservation(annonce, demandeur, debut, fin, strategy): Reservation
+        + reserverAvecTarifHoraire(...): Reservation
+        + reserverAvecTarifJournalier(...): Reservation
+        + confirmerReservation(r: Reservation)
+        + terminerReservation(r: Reservation)
+        + annulerReservation(r: Reservation)
+    }
+    
+    class EvaluationService {
+        - evaluations: List<Evaluation>
+        --
+        + evaluer(reservation, evaluateur, note, commentaire): Evaluation
+        + evaluerProprietaire(reservation, note, commentaire): Evaluation
+        + evaluerDemandeur(reservation, note, commentaire): Evaluation
+        + getEvaluationsRecues(user): List<Evaluation>
+        + calculerMoyenne(user): double
+    }
+}
+
+' ============= RELATIONS =============
+
+' Héritage
+Annonce <|-- BienAnnonce
+Annonce <|-- ServiceAnnonce
+Annonce <|-- DonAnnonce
+Annonce ..|> Observable
+
+' Associations
+Utilisateur "1" -- "*" Annonce : publie >
+Utilisateur "1" -- "*" Reservation : effectue >
+Utilisateur "1" -- "*" Evaluation : reçoit >
+Annonce "*" -- "1" Categorie
+Annonce "1" -- "*" Reservation
+Reservation "*" -- "1" StrategyTarification : utilise >
+Evaluation "*" -- "2" Utilisateur : concerne >
+
+' Factory crée
+AnnonceFactory ..> Annonce : << creates >>
+AnnonceFactory ..> BienAnnonce : << creates >>
+AnnonceFactory ..> ServiceAnnonce : << creates >>
+AnnonceFactory ..> DonAnnonce : << creates >>
+
+' Adapter
+GoogleCalendarAdapter o-- GoogleCalendarAPI
+
+' Services
+AnnonceService o-- Annonce
+AnnonceService o-- Observer
+ReservationService o-- Reservation
+ReservationService o-- Calendrier
+EvaluationService o-- Evaluation
+
+' Notes
+note right of AnnonceFactory
+  **Pattern Simple Factory**
+  Centralise la création
+  des annonces
+end note
+
+note right of Observer
+  **Pattern Observer**
+  Notifications automatiques
+  lors de changements
+end note
+
+note right of StrategyTarification
+  **Pattern Strategy**
+  Algorithme de tarification
+  interchangeable
+end note
+
+note right of GoogleCalendarAdapter
+  **Pattern Adapter**
+  Adapte l'API Google
+  à notre interface
+end note
+
+@enduml

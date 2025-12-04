@@ -1,0 +1,124 @@
+@startuml sequence_strategy
+!theme plain
+
+title Diagramme de Séquence - Pattern Strategy\nCalcul Flexible des Prix - CampusShare
+
+actor "Utilisateur" as user
+participant "ReservationService" as service
+participant "Reservation" as reservation
+participant "<<interface>>\nStrategyTarification" as strategy
+participant "TarifGratuit" as gratuit
+participant "TarifHoraire" as horaire
+participant "TarifJournalier" as journalier
+participant "TarifForfaitaire" as forfait
+
+== Scénario 1: Réservation avec tarif horaire ==
+
+user -> service : reserverAvecTarifHoraire(annonce, user, 14h, 17h)
+activate service
+
+service -> horaire : new TarifHoraire()
+activate horaire
+horaire --> service : strategy
+deactivate horaire
+
+service -> reservation : new Reservation(..., strategy)
+activate reservation
+
+reservation -> horaire : calculerPrix(10€, 3h)
+activate horaire
+note right of horaire
+  **Algorithme TarifHoraire:**
+  heures = 3
+  prix = 10€ × 3 = 30€
+end note
+horaire --> reservation : 30.00€
+deactivate horaire
+
+reservation --> service : reservation (prix: 30€)
+deactivate reservation
+
+service --> user : Réservation créée: 30€
+deactivate service
+
+== Scénario 2: Réservation avec tarif journalier ==
+
+user -> service : reserverAvecTarifJournalier(annonce, user, lundi, dimanche)
+activate service
+
+service -> journalier : new TarifJournalier()
+activate journalier
+journalier --> service : strategy
+deactivate journalier
+
+service -> reservation : new Reservation(..., strategy)
+activate reservation
+
+reservation -> journalier : calculerPrix(10€, 7 jours)
+activate journalier
+note right of journalier
+  **Algorithme TarifJournalier:**
+  jours = 7
+  prix = 10€ × 7 = 70€
+  réduction 20% (>=7j) = -14€
+  **Total: 56€**
+end note
+journalier --> reservation : 56.00€
+deactivate journalier
+
+reservation --> service : reservation (prix: 56€)
+deactivate reservation
+
+service --> user : Réservation créée: 56€
+deactivate service
+
+== Scénario 3: Changement de stratégie à la volée ==
+
+user -> service : changerStrategie(reservation, new TarifGratuit())
+activate service
+
+service -> reservation : setStrategyTarification(tarifGratuit)
+activate reservation
+
+reservation -> gratuit : calculerPrix(10€, any)
+activate gratuit
+note right of gratuit
+  **Algorithme TarifGratuit:**
+  Toujours 0€
+  (partage solidaire)
+end note
+gratuit --> reservation : 0.00€
+deactivate gratuit
+
+reservation -> reservation : prixTotal = 0€
+reservation --> service : OK
+deactivate reservation
+
+service --> user : Prix recalculé: 0€
+deactivate service
+
+== Comparaison des stratégies ==
+
+note over gratuit, forfait
+  **Même interface, comportements différents:**
+  
+  | Stratégie    | Prix base 10€ | Durée 3h | Durée 7j |
+  |--------------|---------------|----------|----------|
+  | Gratuit      | 0€            | 0€       | 0€       |
+  | Horaire      | 10€/h         | 30€      | 1680€    |
+  | Journalier   | 10€/j         | 10€      | 56€*     |
+  | Forfaitaire  | 10€ fixe      | 10€      | 10€      |
+  
+  * avec réduction -20% pour >= 7 jours
+end note
+
+== Avantages du Pattern Strategy ==
+
+note over service, forfait
+  ✓ **Interchangeabilité** : Changer l'algorithme sans modifier le code client
+  ✓ **Open/Closed** : Ajouter de nouvelles stratégies sans modifier l'existant
+  ✓ **Testabilité** : Chaque stratégie peut être testée indépendamment
+  ✓ **Clarté** : Un algorithme = une classe
+end note
+
+@enduml

@@ -1,0 +1,124 @@
+@startuml cas_utilisation
+!theme plain
+
+title Diagramme de Cas d'Utilisation - CampusShare\nProjet INFO 732
+
+left to right direction
+
+' Acteurs
+actor "Étudiant\n(Visiteur)" as visiteur
+actor "Étudiant\n(Inscrit)" as etudiant
+actor "Système\nNotification" as systeme
+actor "Calendrier\nExterne" as calendrier
+
+visiteur <|-- etudiant
+
+rectangle "CampusShare" {
+    
+    ' Cas d'utilisation - Authentification
+    package "Authentification" {
+        usecase "S'inscrire\n(email .edu)" as UC_INSCRIRE
+        usecase "Se connecter" as UC_CONNECTER
+        usecase "Gérer son profil" as UC_PROFIL
+    }
+    
+    ' Cas d'utilisation - Annonces
+    package "Gestion des Annonces" {
+        usecase "Consulter les annonces" as UC_CONSULTER
+        usecase "Rechercher une annonce" as UC_RECHERCHER
+        usecase "Filtrer par catégorie" as UC_FILTRER
+        usecase "Publier une annonce" as UC_PUBLIER
+        usecase "Modifier une annonce" as UC_MODIFIER
+        usecase "Supprimer une annonce" as UC_SUPPRIMER
+        usecase "Suivre une catégorie" as UC_SUIVRE
+    }
+    
+    ' Cas d'utilisation - Réservations
+    package "Gestion des Réservations" {
+        usecase "Demander une réservation" as UC_RESERVER
+        usecase "Choisir la tarification" as UC_TARIF
+        usecase "Confirmer une réservation" as UC_CONFIRMER
+        usecase "Refuser une réservation" as UC_REFUSER
+        usecase "Annuler une réservation" as UC_ANNULER
+        usecase "Terminer une réservation" as UC_TERMINER
+    }
+    
+    ' Cas d'utilisation - Évaluations
+    package "Évaluations" {
+        usecase "Évaluer un utilisateur" as UC_EVALUER
+        usecase "Consulter les avis" as UC_AVIS
+    }
+    
+    ' Cas d'utilisation - Notifications
+    package "Notifications" {
+        usecase "Recevoir notification\npar email" as UC_NOTIF_EMAIL
+        usecase "Recevoir notification\npush" as UC_NOTIF_PUSH
+        usecase "Synchroniser\ncalendrier" as UC_SYNC_CAL
+    }
+}
+
+' Relations Visiteur
+visiteur --> UC_CONSULTER
+visiteur --> UC_RECHERCHER
+visiteur --> UC_FILTRER
+visiteur --> UC_INSCRIRE
+
+' Relations Étudiant inscrit
+etudiant --> UC_CONNECTER
+etudiant --> UC_PROFIL
+etudiant --> UC_PUBLIER
+etudiant --> UC_MODIFIER
+etudiant --> UC_SUPPRIMER
+etudiant --> UC_SUIVRE
+etudiant --> UC_RESERVER
+etudiant --> UC_CONFIRMER
+etudiant --> UC_REFUSER
+etudiant --> UC_ANNULER
+etudiant --> UC_TERMINER
+etudiant --> UC_EVALUER
+etudiant --> UC_AVIS
+
+' Relations Système
+systeme --> UC_NOTIF_EMAIL
+systeme --> UC_NOTIF_PUSH
+
+' Relations Calendrier
+calendrier --> UC_SYNC_CAL
+
+' Extensions et inclusions
+UC_RECHERCHER ..> UC_FILTRER : <<extend>>
+UC_RESERVER ..> UC_TARIF : <<include>>
+UC_CONFIRMER ..> UC_SYNC_CAL : <<include>>
+UC_PUBLIER ..> UC_NOTIF_EMAIL : <<extend>>
+UC_CONFIRMER ..> UC_NOTIF_EMAIL : <<extend>>
+UC_TERMINER ..> UC_EVALUER : <<extend>>
+
+' Notes
+note right of UC_PUBLIER
+  **Pattern Factory**
+  Création de l'annonce
+  via AnnonceFactory
+end note
+
+note right of UC_TARIF
+  **Pattern Strategy**
+  Choix de la stratégie:
+  - Gratuit
+  - Horaire
+  - Journalier
+  - Forfaitaire
+end note
+
+note right of UC_NOTIF_EMAIL
+  **Pattern Observer**
+  Notification automatique
+  des utilisateurs abonnés
+end note
+
+note right of UC_SYNC_CAL
+  **Pattern Adapter**
+  Intégration avec
+  Google Calendar
+end note
+
+@enduml

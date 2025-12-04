@@ -1,0 +1,122 @@
+@startuml sequence_observer
+!theme plain
+
+title Diagramme de Séquence - Pattern Observer\nSystème de Notifications - CampusShare
+
+actor "Alice\n(Propriétaire)" as alice
+participant "Annonce\n<<Observable>>" as annonce
+participant "EmailObserver" as emailObs
+participant "PushObserver" as pushObs
+participant "SMSObserver" as smsObs
+actor "Bob\n(Abonné)" as bob
+actor "Charlie\n(Abonné)" as charlie
+
+== Phase 1: Abonnement aux notifications ==
+
+bob -> annonce : attach(emailObserver)
+activate annonce
+annonce -> annonce : observers.add(emailObserver)
+annonce --> bob : OK
+deactivate annonce
+
+bob -> annonce : attach(pushObserver)
+activate annonce
+annonce -> annonce : observers.add(pushObserver)
+annonce --> bob : OK
+deactivate annonce
+
+charlie -> annonce : attach(smsObserver)
+activate annonce
+annonce -> annonce : observers.add(smsObserver)
+annonce --> charlie : OK
+deactivate annonce
+
+note over annonce
+  **État actuel:**
+  observers = [emailObs, pushObs, smsObs]
+end note
+
+== Phase 2: Modification déclenchant les notifications ==
+
+alice -> annonce : setPrixBase(8.00€)
+activate annonce
+
+annonce -> annonce : this.prixBase = 8.00€
+annonce -> annonce : notifyObservers("Prix modifié: 8€")
+
+loop pour chaque observer dans observers
+    
+    annonce -> emailObs : update(this, "Prix modifié: 8€")
+    activate emailObs
+    emailObs -> bob : [📧 EMAIL]\nSujet: Annonce modifiée\nLe prix est maintenant 8€
+    emailObs --> annonce : 
+    deactivate emailObs
+    
+    annonce -> pushObs : update(this, "Prix modifié: 8€")
+    activate pushObs
+    pushObs -> bob : [📱 PUSH]\nNouveau prix: 8€
+    pushObs --> annonce : 
+    deactivate pushObs
+    
+    annonce -> smsObs : update(this, "Prix modifié: 8€")
+    activate smsObs
+    smsObs -> charlie : [💬 SMS]\nCampusShare: Prix modifié 8€
+    smsObs --> annonce : 
+    deactivate smsObs
+    
+end
+
+annonce --> alice : OK
+deactivate annonce
+
+== Phase 3: Désabonnement ==
+
+bob -> annonce : detach(pushObserver)
+activate annonce
+annonce -> annonce : observers.remove(pushObserver)
+annonce --> bob : OK
+deactivate annonce
+
+note over annonce
+  **État actuel:**
+  observers = [emailObs, smsObs]
+  (pushObs retiré)
+end note
+
+== Phase 4: Nouvelle notification (sans Push) ==
+
+alice -> annonce : changerStatut(RESERVEE)
+activate annonce
+
+annonce -> annonce : this.statut = RESERVEE
+annonce -> annonce : notifyObservers("Annonce réservée")
+
+annonce -> emailObs : update(this, "Annonce réservée")
+activate emailObs
+emailObs -> bob : [📧 EMAIL] Annonce réservée
+deactivate emailObs
+
+note over pushObs #LightGray
+  PushObserver n'est
+  plus notifié
+  (désabonné)
+end note
+
+annonce -> smsObs : update(this, "Annonce réservée")
+activate smsObs
+smsObs -> charlie : [💬 SMS] Annonce réservée
+deactivate smsObs
+
+annonce --> alice : OK
+deactivate annonce
+
+== Avantages du Pattern Observer ==
+
+note over annonce, smsObs
+  ✓ **Découplage** : L'annonce ne connaît pas les détails des observateurs
+  ✓ **Extensibilité** : Facile d'ajouter un nouveau type (ex: WhatsAppObserver)
+  ✓ **Flexibilité** : Abonnement/désabonnement dynamique
+  ✓ **Réutilisabilité** : Les observateurs peuvent observer plusieurs annonces
+end note
+
+@enduml
