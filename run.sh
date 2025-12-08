@@ -9,4 +9,4 @@ if [ ! -d "target/classes" ]; then
 fi
 
 # Exécuter
-java -cp target/classes com.campusshare.CampusShareApp
+java -cp target/classes com.campusshare.CampusShareGUI
